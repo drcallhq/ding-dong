@@ -17,7 +17,7 @@ const handler = (context) => {
 };
 
 const agi = new AGIServer(handler, {
-  debug: true, 
-  port: 3007
+  debug: true,
+  port: 3007,
 });
-agi.init()
+agi.init();

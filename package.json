@@ -13,9 +13,7 @@
     "test": "mocha -R tap --exit",
     "lint-fix": "eslint --fix ."
   },
-  "dependencies": {
-    "readable-stream": "^2.3.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "eslint": "^5.16.0",
     "eslint-config-google": "^0.12.0",

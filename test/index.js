@@ -62,9 +62,24 @@ describe('Context', function() {
   });
 
   describe('context.exec', function() {
-    it('sends exec command', function() {
+    it('sends exec command with multiple arguments', function() {
       this.context.exec('test', 'bang', 'another');
       expect(this.context.sent.join('')).to.eql('EXEC test bang another\n');
+    });
+
+    it('sends exec command with single argument', function() {
+      this.context.exec('Dial');
+      expect(this.context.sent.join('')).to.eql('EXEC Dial\n');
+    });
+
+    it('sends exec command with no arguments', function() {
+      this.context.exec();
+      expect(this.context.sent.join('')).to.eql('EXEC \n');
+    });
+
+    it('sends exec command with many arguments', function() {
+      this.context.exec('Dial', 'SIP/1001', '30', 'tT', 'g', 'h', 'i', 'j', 'k', 'l');
+      expect(this.context.sent.join('')).to.eql('EXEC Dial SIP/1001 30 tT g h i j k l\n');
     });
   });
 
@@ -355,18 +370,42 @@ describe('Context', function() {
   });
 
   describe('stream file', function() {
-    it('sends', function() {
+    it('sends with specified digits', function() {
       this.context.streamFile('test', '1234567890#*', function() {});
+      expect(this.context.sent.join(''))
+          .to.eql('STREAM FILE "test" "1234567890#*"\n');
+    });
+
+    it('sends with default digits when not provided', function() {
+      this.context.streamFile('test');
+      expect(this.context.sent.join(''))
+          .to.eql('STREAM FILE "test" "1234567890#*"\n');
+    });
+
+    it('sends with default digits when null', function() {
+      this.context.streamFile('test', null);
+      expect(this.context.sent.join(''))
+          .to.eql('STREAM FILE "test" "1234567890#*"\n');
+    });
+
+    it('sends with default digits when undefined', function() {
+      this.context.streamFile('test', undefined);
       expect(this.context.sent.join(''))
           .to.eql('STREAM FILE "test" "1234567890#*"\n');
     });
   });
 
   describe('record file', function() {
-    it('record', function() {
+    it('record with timeout conversion', function() {
       this.context.recordFile('test', 'wav', '#', 10, 0, 1, 2, function() {});
       expect(this.context.sent.join(''))
           .to.eql('RECORD FILE "test" wav # 10000 0 1 2\n');
+    });
+
+    it('record converts timeout from seconds to milliseconds', function() {
+      this.context.recordFile('file.wav', 'wav', '#', 5, 0, 1, 2);
+      expect(this.context.sent.join(''))
+          .to.eql('RECORD FILE "file.wav" wav # 5000 0 1 2\n');
     });
   });
 
@@ -442,14 +481,34 @@ describe('Context', function() {
   });
 
   describe('waitForDigit', function() {
-    it('sends with default timeout', function() {
-      this.context.waitForDigit(5000);
+    it('sends with default timeout when not provided', function() {
+      this.context.waitForDigit();
+      expect(this.context.sent.join('')).to.eql('WAIT FOR DIGIT 5000\n');
+    });
+
+    it('sends with default timeout when null', function() {
+      this.context.waitForDigit(null);
+      expect(this.context.sent.join('')).to.eql('WAIT FOR DIGIT 5000\n');
+    });
+
+    it('sends with default timeout when undefined', function() {
+      this.context.waitForDigit(undefined);
       expect(this.context.sent.join('')).to.eql('WAIT FOR DIGIT 5000\n');
     });
 
     it('sends with specified timeout', function() {
+      this.context.waitForDigit(5000);
+      expect(this.context.sent.join('')).to.eql('WAIT FOR DIGIT 5000\n');
+    });
+
+    it('sends with custom timeout', function() {
       this.context.waitForDigit(-1);
       expect(this.context.sent.join('')).to.eql('WAIT FOR DIGIT -1\n');
+    });
+
+    it('sends with zero timeout', function() {
+      this.context.waitForDigit(0);
+      expect(this.context.sent.join('')).to.eql('WAIT FOR DIGIT 0\n');
     });
   });
 

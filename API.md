@@ -2,6 +2,55 @@
 
 attention: using javascript promises
 
+## Server options
+
+```js
+new AgiServer(handler, {
+  port: 3000,          // default
+  host: undefined,
+  debug: false,
+  logger: false,
+  commandTimeout: 0,   // milliseconds; 0 disables the deadline
+});
+```
+
+### commandTimeout
+
+Deadline applied to every command dispatched on a context. When it expires the
+command's promise **rejects** instead of staying pending. Forwarded to every
+context the server creates, and overridable per call:
+
+```js
+context.sendCommand('GET VARIABLE TIME_END', {timeout: 5000});
+```
+
+⚠️ **It is `0` — disabled — by default, on purpose.** `dial`, `recordFile`,
+`getData`, `waitForDigit` and `streamFile` block by design: an `EXEC Dial`
+stays pending for the whole call. Any fixed default would eventually reject a
+live one, so the value is yours to choose, above the longest blocking command
+your handler issues. Leaving it unset means a command with no response stays
+pending, which is the behaviour of every version before this one.
+
+## Command failures
+
+A command's promise rejects when the deadline above expires, or when Asterisk
+answers with a line the response parser cannot read — most importantly
+`511 Command Not Permitted on a dead channel`, which is the expected answer to
+a channel read in the `h` extension.
+
+The rejection names the command both in its message and in `err.command`:
+
+```js
+context.getVariable('TIME_END').catch(function(err) {
+  err.command;   // 'GET VARIABLE TIME_END'
+  err.message;   // 'AGI command failed: GET VARIABLE TIME_END — 511 ...'
+});
+```
+
+An unreadable response still emits `hangup` afterwards, as it always did; the
+difference is that the in-flight command is settled first, instead of being
+abandoned with no rejection for a `.catch` to see.
+
 ### context.onEvent(event)
 
 events

@@ -11,13 +11,21 @@
   "main": "lib/",
   "scripts": {
     "test": "mocha -R tap --exit",
-    "lint-fix": "eslint --fix ."
+    "lint-fix": "eslint --fix .",
+    "gate": "node scripts/runGate.js",
+    "gate:lint": "node scripts/runGate.js lint",
+    "gate:arch": "node scripts/runGate.js arch",
+    "gate:tests": "node scripts/runGate.js tests",
+    "gate:deadcode": "node scripts/runGate.js deadcode",
+    "gate:baseline": "node scripts/lint-baseline.js --write"
   },
   "dependencies": {},
   "devDependencies": {
+    "dependency-cruiser": "^16.10.4",
     "eslint": "^5.16.0",
     "eslint-config-google": "^0.12.0",
     "expect.js": "^0.3.1",
+    "knip": "^5.88.1",
     "memorystream": "^0.3.0",
     "mocha": "6.1.4"
   }

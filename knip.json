@@ -1,0 +1,15 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "lib/index.js",
+    "example/app.js",
+    "scripts/check-architecture.js"
+  ],
+  "project": [
+    "lib/**/*.js",
+    "example/**/*.js",
+    "test/**/*.js",
+    "scripts/**/*.js"
+  ],
+  "ignoreDependencies": ["dependency-cruiser"]
+}

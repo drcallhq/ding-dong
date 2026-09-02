@@ -1,0 +1,20 @@
+{
+  "note": "Violações de lint pré-existentes, toleradas pelo gate `lint`. Nada de novo deve ser adicionado aqui — este arquivo só deve encolher. Regrave com `npm run gate:baseline` DEPOIS de corrigir violações.",
+  "generatedAt": "2026-09-02",
+  "total": 13,
+  "violations": {
+    "lib/context.js|prefer-rest-params|const args = Array.prototype.slice.call(arguments, 0);": 1,
+    "lib/context.js|max-len|return this.sendCommand('SPEECH RECOGNIZE ' + prompt + ' ' + timeout + ' ' + offset);": 1,
+    "lib/context.js|max-len|return this.sendCommand('GET OPTION ' + file + ' \"' + escape_digits + '\" ' + timeout);": 1,
+    "lib/context.js|max-len|Context.prototype.recordFile = function(filename, format, escape_digits, timeout, offset, beep, silence) {": 1,
+    "lib/context.js|max-len|Context.prototype.sayDate = function(seconds, escape_digits) { // seconds since 1.01.1970": 1,
+    "lib/context.js|max-len|Context.prototype.sayTime = function(seconds, escape_digits) { // seconds since 1.01.1970": 1,
+    "lib/context.js|max-len|Context.prototype.sayDateTime = function(seconds, escape_digits, format, timezone) { // seconds since 1.01.1970": 1,
+    "lib/context.js|max-len|return this.sendCommand('SAY DATETIME ' + seconds + ' \"' + escape_digits + '\" ' + format + ' ' + timezone);": 1,
+    "lib/context.js|max-len|return this.sendCommand('SAY PHONETIC ' + string + ' \"' + escape_digits + '\"');": 1,
+    "lib/context.js|max-len|return this.sendCommand('STREAM FILE \"' + filename + '\" \"' + acceptDigits + '\"');": 1,
+    "lib/context.js|max-len|const timeout = timeoutIn !== undefined && timeoutIn !== null ? timeoutIn : 5000;": 1,
+    "test/index.js|max-len|this.context.exec('Dial', 'SIP/1001', '30', 'tT', 'g', 'h', 'i', 'j', 'k', 'l');": 1,
+    "test/index.js|max-len|expect(this.context.sent.join('')).to.eql('EXEC Dial SIP/1001 30 tT g h i j k l\\n');": 1
+  }
+}

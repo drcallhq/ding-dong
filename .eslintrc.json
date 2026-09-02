@@ -9,6 +9,7 @@
     "ecmaVersion": 2018
   },
   "rules": {
-    "new-cap": ["error", { "properties": true }]
+    "new-cap": ["error", { "properties": true }],
+    "camelcase": ["error", { "allow": ["^escape_digits$"] }]
   }
 }

@@ -604,3 +604,136 @@ describe('AgiServer#createServer', function() {
     agiServer.server.emit('connection', new MemoryStream());
   });
 });
+
+// --- G01 AGI Library Hardening ---------------------------------------------
+
+// Like `context` above, but lets each test choose the variables block, so a
+// value carrying a colon can be exercised.
+const contextWith = function(lines, cb) {
+  const stream = new MemoryStream();
+  const ctx = new Context(stream);
+  ctx.send = function(msg, cb) {
+    ctx.pending = cb;
+    ctx.sent = ctx.sent || [];
+    ctx.sent.push(msg);
+  };
+
+  ctx.once('variables', function() {
+    cb(ctx);
+  });
+
+  lines.forEach(function(line) {
+    stream.write(line + '\n');
+  });
+  stream.write('\n\n');
+};
+
+// Settles within a bounded window and fails EXPLICITLY when it does not.
+// Relying on mocha's global timeout would report a hang and a slow test the
+// same way, which is exactly what the reverted-fix control has to tell apart.
+const expectRejection = function(promise, timeoutMs, cb) {
+  let done = false;
+  const finish = function(err, value) {
+    if (done) return;
+    done = true;
+    cb(err, value);
+  };
+  const timer = setTimeout(function() {
+    finish(new Error('command never settled within ' + timeoutMs + 'ms'));
+  }, timeoutMs);
+  promise.then(function() {
+    clearTimeout(timer);
+    finish(new Error('expected a rejection, got a resolution'));
+  }, function(err) {
+    clearTimeout(timer);
+    finish(null, err);
+  });
+};
+
+describe('G01 variable parser', function() {
+  it('parses a value containing colons', function(done) {
+    contextWith(['agi_request: agi://172.31.0.200/cdr_update'], function(ctx) {
+      expect(ctx.variables['agi_request'])
+          .to.eql('agi://172.31.0.200/cdr_update');
+      done();
+    });
+  });
+
+  it('parses a timestamp argument', function(done) {
+    contextWith(['agi_arg_2: 2026-09-02 10:15:00'], function(ctx) {
+      expect(ctx.variables['agi_arg_2']).to.eql('2026-09-02 10:15:00');
+      done();
+    });
+  });
+
+  it('still parses a value without a colon', function(done) {
+    contextWith(['agi_network: yes'], function(ctx) {
+      expect(ctx.variables['agi_network']).to.eql('yes');
+      done();
+    });
+  });
+
+  it('keeps a line with no colon addressable', function(done) {
+    contextWith(['agi_network: yes', 'malformed'], function(ctx) {
+      expect(ctx.variables['malformed']).to.eql('');
+      done();
+    });
+  });
+});
+
+describe('G01 response parser', function() {
+  it('rejects on 511 dead channel', function(done) {
+    contextWith(['agi_network: yes'], function(ctx) {
+      expectRejection(ctx.sendCommand('GET VARIABLE TIME_END'), 500,
+          function(err, rejection) {
+            if (err) return done(err);
+            expect(rejection.command).to.eql('GET VARIABLE TIME_END');
+            expect(rejection.message).to.contain('511');
+            done();
+          });
+      ctx.stream.write('511 Command Not Permitted on a dead channel\n');
+    });
+  });
+
+  it('rejects on 510 unknown command', function(done) {
+    contextWith(['agi_network: yes'], function(ctx) {
+      expectRejection(ctx.sendCommand('BOGUS COMMAND'), 500,
+          function(err, rejection) {
+            if (err) return done(err);
+            expect(rejection.command).to.eql('BOGUS COMMAND');
+            done();
+          });
+      ctx.stream.write('510 Invalid or unknown command\n');
+    });
+  });
+
+  it('still emits hangup on an unparseable line', function(done) {
+    contextWith(['agi_network: yes'], function(ctx) {
+      ctx.once('hangup', function() {
+        done();
+      });
+      ctx.sendCommand('GET VARIABLE TIME_END').catch(function() {});
+      ctx.stream.write('511 Command Not Permitted on a dead channel\n');
+    });
+  });
+
+  it('emits hangup with no pending command', function(done) {
+    contextWith(['agi_network: yes'], function(ctx) {
+      ctx.once('hangup', function() {
+        done();
+      });
+      ctx.stream.write('HANGUP\n');
+    });
+  });
+
+  it('resolves a well-formed response unchanged', function(done) {
+    contextWith(['agi_network: yes'], function(ctx) {
+      ctx.sendCommand('GET VARIABLE TIME_END').then(function(response) {
+        expect(response.code).to.eql(200);
+        expect(response.value).to.eql('2026-09-02 10:15:00');
+        done();
+      }).catch(done);
+      ctx.stream.write('200 result=1 (2026-09-02 10:15:00)\n');
+    });
+  });
+});

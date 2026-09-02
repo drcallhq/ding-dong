@@ -737,3 +737,92 @@ describe('G01 response parser', function() {
     });
   });
 });
+
+// Same harness, with per-context options.
+const contextOpts = function(options, cb) {
+  const stream = new MemoryStream();
+  const ctx = new Context(stream, options);
+  ctx.send = function(msg, cb) {
+    ctx.pending = cb;
+    ctx.sent = ctx.sent || [];
+    ctx.sent.push(msg);
+  };
+
+  ctx.once('variables', function() {
+    cb(ctx);
+  });
+
+  stream.write('agi_network: yes\n');
+  stream.write('\n\n');
+};
+
+// Counting live timers is the only way to SEE a leaked one: a timer that
+// fires after its promise resolved rejects into the void, so asserting "no
+// late rejection arrived" would pass even with the leak intact.
+const activeTimers = function() {
+  return process.getActiveResourcesInfo().filter(function(resource) {
+    return resource === 'Timeout';
+  }).length;
+};
+
+describe('G01 command deadline', function() {
+  it('rejects after the configured deadline', function(done) {
+    contextOpts({commandTimeout: 60}, function(ctx) {
+      expectRejection(ctx.sendCommand('GET VARIABLE TIME_END'), 500,
+          function(err, rejection) {
+            if (err) return done(err);
+            expect(rejection.command).to.eql('GET VARIABLE TIME_END');
+            expect(rejection.message).to.contain('60ms');
+            done();
+          });
+    });
+  });
+
+  it('does not reject when no deadline is configured', function(done) {
+    contextOpts({}, function(ctx) {
+      let settled = false;
+      const mark = function() {
+        settled = true;
+      };
+      ctx.sendCommand('GET VARIABLE TIME_END').then(mark, mark);
+
+      setTimeout(function() {
+        expect(settled).to.eql(false);
+        done();
+      }, 150);
+    });
+  });
+
+  it('honours a per-call timeout override', function(done) {
+    contextOpts({commandTimeout: 5000}, function(ctx) {
+      expectRejection(ctx.sendCommand('GET VARIABLE X', {timeout: 60}), 500,
+          function(err, rejection) {
+            if (err) return done(err);
+            expect(rejection.message).to.contain('60ms');
+            done();
+          });
+    });
+  });
+
+  it('clears the timer once the command resolves', function(done) {
+    contextOpts({commandTimeout: 5000}, function(ctx) {
+      const before = activeTimers();
+      ctx.sendCommand('GET VARIABLE TIME_END').then(function() {
+        // setImmediate, not setTimeout: the check must not add a Timeout of
+        // its own to the very count it is reading.
+        setImmediate(function() {
+          expect(activeTimers()).to.eql(before);
+          done();
+        });
+      }).catch(done);
+
+      expect(activeTimers()).to.eql(before + 1);
+      ctx.stream.write('200 result=1 (ok)\n');
+    });
+  });
+
+  it('forwards commandTimeout from AgiServer options', function() {
+    const agiServer = new AgiServer(function() {}, {commandTimeout: 1234});
+    expect(agiServer.options.commandTimeout).to.eql(1234);
+  });
+});

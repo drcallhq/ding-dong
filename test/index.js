@@ -784,7 +784,14 @@ describe('G01 command deadline', function() {
       const mark = function() {
         settled = true;
       };
+
+      // Waiting out a window proves only that no deadline SHORTER than the
+      // window exists -- a default of 5000ms would sail past any window this
+      // suite can afford to wait. Assert instead that no timer was armed at
+      // all, which no non-zero default can survive, whatever its value.
+      const before = activeTimers();
       ctx.sendCommand('GET VARIABLE TIME_END').then(mark, mark);
+      expect(activeTimers()).to.eql(before);
 
       setTimeout(function() {
         expect(settled).to.eql(false);
